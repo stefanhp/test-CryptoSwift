@@ -62,15 +62,24 @@ final class CryptoSwiftTest: XCTestCase {
         let encrypted: [UInt8] = Data(base64Encoded: ct)!.bytes
         let tsInBytes = Int(ts/8)
 
+        var lol = Int(2)
+        let limit1 = Int(1<<16)
+        let limit2 = Int(1<<24)
+        if encrypted.count >= limit1 { lol += 1 }
+        if encrypted.count >= limit2 { lol += 1 }
+        let sliceEnd = 15 - lol
+        let ivUsed = Array(ivDecoded[0..<sliceEnd])
+
         let ccm = CCM(
-            iv: ivDecoded,
+            iv: ivUsed,
             tagLength: tsInBytes,
             messageLength: encrypted.count - tsInBytes)
 
         do {
             let aes = try AES(key: rawKey, blockMode: ccm, padding: .noPadding)
-            let decrypted = try aes.decrypt(encrypted)     // <-- crash here
-            XCTAssertEqual(String(data: Data(decrypted), encoding: .utf8), message)
+            let decryptedData = try aes.decrypt(encrypted)     // <-- crash here
+            let decrypted = String(data: Data(decryptedData), encoding: .ascii)
+            XCTAssertEqual(decrypted, message)
         } catch let error {
             XCTFail("Error: \(error)")
             return
